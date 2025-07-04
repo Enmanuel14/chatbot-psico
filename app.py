@@ -1,12 +1,15 @@
+import os
 from flask import Flask, request, jsonify
 from transformers import pipeline
 
-# Cargar el modelo solo una vez (fuera de la función)
+# Definir puerto según Render
+port = int(os.environ.get("PORT", 8080))
+
+# Cargar modelo solo una vez
 classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
 app = Flask(__name__)
 
-# Filtros de palabras sensibles
 palabras_clave = [
     "me quiero morir", "no quiero vivir", "suicidarme", "matarme", "morirme",
     "quitarme la vida", "no puedo más", "todo es una mierda", "odio mi vida",
@@ -27,10 +30,8 @@ def analizar():
     if not texto:
         return jsonify({"error": "Texto no proporcionado"}), 400
 
-    # Analizar sentimiento
     resultado = classifier(texto)
 
-    # Buscar coincidencias exactas (filtros activados)
     coincidencias = [palabra for palabra in palabras_clave if palabra in texto.lower()]
 
     return jsonify({
@@ -39,4 +40,4 @@ def analizar():
     })
 
 if __name__ == '__main__':
-     app.run(host="0.0.0.0", port=port)
+    app.run(host="0.0.0.0", port=port)
