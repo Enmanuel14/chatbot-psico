@@ -1,53 +1,42 @@
 from flask import Flask, request, jsonify
-import g4f
 from transformers import pipeline
-import os
+
+# Cargar el modelo solo una vez (fuera de la función)
+classifier = pipeline("sentiment-analysis", model="distilbert-base-uncased-finetuned-sst-2-english")
 
 app = Flask(__name__)
-classifier = pipeline("sentiment-analysis")
 
-temas_psicologicos = [
-    "ansiedad", "ansioso", "autoestima", "estrés", "estresado", "depresión", "deprimido",
-    "emoción", "emociones", "triste", "feliz", "motivación", "motivado", "frustración", "frustrado",
-    "trauma", "culpa", "culpable", "psicólogo", "psicología", "insomnio", "miedo", "soledad",
-    "terapia", "rabia", "ira", "ayuda", "afrontar", "manejar", "solución", "superar", "me siento",
-    "qué puedo hacer", "cómo me afecta", "cómo afrontarlo", "me afecta", "me está pasando"
+# Filtros de palabras sensibles
+palabras_clave = [
+    "me quiero morir", "no quiero vivir", "suicidarme", "matarme", "morirme",
+    "quitarme la vida", "no puedo más", "todo es una mierda", "odio mi vida",
+    "quiero desaparecer", "me siento vacío", "me siento sola", "no valgo nada",
+    "ya no tiene sentido", "quiero rendirme", "no tengo esperanza",
+    "no le importo a nadie", "estoy desesperado", "no hay salida"
 ]
 
-@app.route('/', methods=['POST'])
-def chatbot():
+@app.route('/')
+def home():
+    return "Chatbot psicológico con filtros activos está funcionando."
+
+@app.route('/analizar', methods=['POST'])
+def analizar():
     data = request.get_json()
-    pregunta = data.get('mensaje', '')
-    
-    resultado = classifier(pregunta)[0]
-    label = resultado['label']
-    score = resultado['score']
-    contiene_tema = any(palabra in pregunta.lower() for palabra in temas_psicologicos)
+    texto = data.get("texto", "")
 
-    if (label == "NEGATIVE" and score > 0.7) or contiene_tema:
-        respuesta = g4f.ChatCompletion.create(
-            model=g4f.models.default,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "Eres un asistente psicológico empático. Escuchas activamente, das apoyo emocional y consejos útiles, sin emitir diagnósticos clínicos."
-                },
-                {"role": "user", "content": pregunta}
-            ]
-        )
-        return jsonify({"respuesta": respuesta})
-    else:
-        return jsonify({"respuesta": "⚠️ Puedo ayudarte si hablas sobre tus emociones, ansiedad, estrés u otros temas de salud mental."})
+    if not texto:
+        return jsonify({"error": "Texto no proporcionado"}), 400
 
-@app.route('/', methods=['GET'])
-def index():
-    return "Chatbot psicológico funcionando."
+    # Analizar sentimiento
+    resultado = classifier(texto)
 
-@app.route('/health', methods=['GET'])
-def health():
-    return "OK"
+    # Buscar coincidencias exactas (filtros activados)
+    coincidencias = [palabra for palabra in palabras_clave if palabra in texto.lower()]
+
+    return jsonify({
+        "sentimiento": resultado,
+        "alertas_detectadas": coincidencias
+    })
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    print(f"Servidor arrancando en puerto {port}...")
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=10000)
