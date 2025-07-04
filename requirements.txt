@@ -1,0 +1,4 @@
+flask
+transformers
+g4f
+torch
