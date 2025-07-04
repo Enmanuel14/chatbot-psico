@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import g4f
 from transformers import pipeline
+import os
 
 app = Flask(__name__)
 classifier = pipeline("sentiment-analysis")
@@ -42,5 +43,11 @@ def chatbot():
 def index():
     return "Chatbot psicológico funcionando."
 
+@app.route('/health', methods=['GET'])
+def health():
+    return "OK"
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    print(f"Servidor arrancando en puerto {port}...")
+    app.run(host='0.0.0.0', port=port)
